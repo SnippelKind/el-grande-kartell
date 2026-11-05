@@ -31,12 +31,14 @@ async function initialize(){
     amount_cents BIGINT NOT NULL CHECK (amount_cents > 0),
     category VARCHAR(60) NOT NULL,
     transaction_date DATE NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    currency VARCHAR(3) NOT NULL DEFAULT 'USD' CHECK (currency IN ('USD', 'MXN'))
   )`);
+  await pool.query("ALTER TABLE finance_transactions ADD COLUMN IF NOT EXISTS currency VARCHAR(3) NOT NULL DEFAULT 'USD'");
   await pool.query('CREATE INDEX IF NOT EXISTS idx_finance_transactions_date ON finance_transactions (transaction_date DESC, created_at DESC)');
 }
-const fields = `id, type, description, amount_cents, category, to_char(transaction_date, 'YYYY-MM-DD') AS date, created_at`;
-function normalize(r){return {id:r.id,type:r.type,description:r.description,amount:Number(r.amount_cents)/100,category:r.category,date:r.date,createdAt:new Date(r.created_at).toISOString()};}
+const fields = `id, type, description, amount_cents, currency, category, to_char(transaction_date, 'YYYY-MM-DD') AS date, created_at`;
+function normalize(r){return {id:r.id,type:r.type,description:r.description,amount:Number(r.amount_cents)/100,currency:r.currency,category:r.category,date:r.date,createdAt:new Date(r.created_at).toISOString()};}
 function validDate(value){if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const time=Date.parse(value+'T00:00:00Z');return Number.isFinite(time)&&new Date(time).toISOString().slice(0,10)===value;}
 
 const server=http.createServer(async(req,res)=>{
@@ -62,10 +64,10 @@ const server=http.createServer(async(req,res)=>{
         return send(res,200,{transactions:result.rows.map(normalize)});
       }
       if(pathname==='/api/transactions'&&req.method==='POST'){
-        const body=await readBody(req);const amount=Number(body.amount);
-        if(!['income','expense'].includes(body.type)||typeof body.description!=='string'||!body.description.trim()||body.description.length>140||!Number.isFinite(amount)||amount<=0||amount>1000000000||!validDate(body.date)||typeof body.category!=='string'||body.category.length>60)return send(res,400,{error:'Bitte gültige Angaben eingeben.'});
+        const body=await readBody(req);const amount=Number(body.amount);const currency=body.currency||'USD';
+        if(!['income','expense'].includes(body.type)||!['USD','MXN'].includes(currency)||typeof body.description!=='string'||!body.description.trim()||body.description.length>140||!Number.isFinite(amount)||amount<=0||amount>1000000000||!validDate(body.date)||typeof body.category!=='string'||body.category.length>60)return send(res,400,{error:'Bitte gültige Angaben eingeben.'});
         const amountCents=Math.round(amount*100);if(!Number.isSafeInteger(amountCents)||amountCents<=0)return send(res,400,{error:'Ungültiger Betrag.'});
-        const result=await pool.query(`INSERT INTO finance_transactions (id,type,description,amount_cents,category,transaction_date) VALUES ($1,$2,$3,$4,$5,$6) RETURNING ${fields}`,[crypto.randomUUID(),body.type,body.description.trim(),amountCents,body.category.trim()||'Sonstiges',body.date]);
+        const result=await pool.query(`INSERT INTO finance_transactions (id,type,description,amount_cents,category,transaction_date,currency) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING ${fields}`,[crypto.randomUUID(),body.type,body.description.trim(),amountCents,body.category.trim()||'Sonstiges',body.date,currency]);
         return send(res,201,{transaction:normalize(result.rows[0])});
       }
       const match=pathname.match(/^\/api\/transactions\/([a-f0-9-]+)$/);
