@@ -1,32 +1,51 @@
-# El Grande Kartell – Finanzdashboard
+# El Grande Kartell – Finanzdashboard mit kostenloser Datenbank
 
-Passwortgeschützte Finanzverwaltung mit HTML, CSS, JavaScript und kleinem Node.js-Server (ohne zusätzliche Pakete).
+Die Webseite läuft bei **Render** (Web Service, Free) und speichert sämtliche Buchungen zentral in **Neon PostgreSQL** (Free). Alle mit dem gemeinsamen Passwort eingeloggten Personen sehen dieselben Einträge.
 
-## Lokal starten
+## 1. Kostenlose Datenbank bei Neon einrichten
 
-1. Node.js 20 oder neuer installieren.
-2. Im Projektordner ein Terminal öffnen.
-3. `npm start` ausführen.
-4. `http://localhost:3000` öffnen.
-5. Passwort: `Wirtschaft` (Groß-/Kleinschreibung beachten).
+1. Öffne https://console.neon.tech und registriere dich bzw. logge dich ein.
+2. Wähle den **Free**-Tarif und erstelle ein neues Projekt, z. B. `el-grande-kartell`.
+3. Wähle eine europäische Region (z. B. Frankfurt), soweit angeboten.
+4. Kopiere im Neon-Dashboard unter **Connect** die vollständige PostgreSQL-Verbindungsadresse (`postgresql://...`). Wähle nach Möglichkeit die **pooled** Verbindung.
+5. Die Verbindungsadresse enthält geheime Zugangsdaten. Teile sie niemals öffentlich und speichere sie nicht in GitHub.
 
-## Render.com bereitstellen
+## 2. Render konfigurieren
 
-1. ZIP entpacken und den **Inhalt des Projektordners** in ein neues GitHub-Repository hochladen.
-2. Render → **New** → **Web Service** → Repository verbinden.
-3. Runtime: **Node**; Build Command: `npm install`; Start Command: `npm start`.
-4. Unter **Environment** die Variable `APP_PASSWORD` anlegen und ein **eigenes sicheres Passwort** einsetzen. Ohne Variable gilt `Wirtschaft`.
-5. Deploy starten und die Render-Adresse öffnen.
+1. Lade den entpackten Projektordner in ein GitHub-Repository hoch.
+2. Öffne https://dashboard.render.com und erstelle **New > Web Service** mit diesem Repository.
+3. **Language/Runtime:** Node; **Build Command:** `npm install`; **Start Command:** `npm start`; **Instance Type:** Free.
+4. Unter **Environment** erstelle folgende Variablen:
+   - `DATABASE_URL` = die vollständige Neon-Verbindungsadresse aus Schritt 1
+   - `APP_PASSWORD` = `Wirtschaft` (empfohlen: ein eigenes starkes Passwort setzen)
+5. Klicke auf **Deploy Web Service**. Der Server erstellt die benötigte Tabelle automatisch.
+6. Die bereitgestellte Render-URL aufrufen und anmelden.
 
-**Wichtig zur Datenspeicherung:** Standardmäßig landen Buchungen in `data/finances.json`. Auf Render ohne Persistent Disk ist das Dateisystem flüchtig: Ein Neustart oder Redeploy kann die Finanzdaten löschen. Für produktive Verwendung einen persistenten Speicher oder eine Datenbank verwenden! Mit Render Persistent Disk (sofern im Tarif verfügbar) Mount Path `/var/data` setzen und die Environment-Variable `DATA_FILE=/var/data/finances.json` anlegen. Auf Free-Web-Services ist Persistent Disk nicht verfügbar.
+## 3. Funktionsumfang
 
-**Sicherheit:** Der Passwortcheck passiert auf dem Server, nicht im Browser. Sitzungen werden in Memory gehalten und verfallen nach 12 Stunden; nach Serverneustart muss man sich erneut anmelden. Alle Besucher mit gültigem Passwort sehen und bearbeiten dieselben Buchungen. Für sensible echte Unternehmens-/Finanzdaten empfiehlt sich zusätzlich Benutzerverwaltung, rollenbasierte Rechte, Backups und eine professionelle Datenbank.
+- Passwortgeschützter Zugang (serverseitig, Cookie mit HttpOnly)
+- Einnahmen und Ausgaben erfassen und löschen
+- Dashboard mit Einnahmen, Ausgaben, Saldo und Buchungen
+- Filter, Suche und Monatsberichte
+- Gemeinsame, dauerhaft gespeicherte PostgreSQL-Datenbank
 
-## Funktionen
+**Wichtig:** Für alle Benutzer gilt dasselbe Passwort; es gibt noch keine getrennten Benutzerkonten oder Berechtigungen. Jedes angemeldete Mitglied darf Buchungen löschen. Für echte sensible Finanzdaten sind einzelne Benutzerkonten, Audit-Protokoll, Backups und weitere Sicherheitsmaßnahmen empfehlenswert.
 
-- Responsives Dark/Gold-Design und eigenes SVG-Logo
-- Passwort-Login und Logout
-- Einnahmen und Ausgaben anlegen
-- Transaktionen suchen, filtern und löschen
-- Kennzahlen, Kontostand und Monatsberichte
-- Speicherung auf dem Server als JSON (vorbehaltlich der obigen Render-Einschränkung)
+## 4. Kostenlos – Grenzen
+
+- Neon Free: gemäß Stand November 2026 1 GB Speicher pro Projekt, Kontingente für Compute und Datenverkehr. Prüfe die aktuellen Konditionen unter https://neon.com/pricing.
+- Render Free: Web Service kann nach Leerlauf einschlafen und beim nächsten Aufruf verzögert starten.
+- Render **Free Postgres** wird nicht verwendet: dessen kostenlose Datenbank läuft nach 30 Tagen ab.
+- Neon ist unabhängig von Render. Neustarts oder Deployments von Render löschen daher **nicht** die Neon-Buchungen.
+- Bitte regelmäßig einen Datenexport bzw. Sicherungskopie aus Neon erstellen; ein kostenloser Tarif ersetzt keine Backup-Strategie.
+
+## 5. Lokal testen
+
+1. Node.js ab Version 20 installieren.
+2. `npm install` ausführen.
+3. Die Umgebungsvariablen `DATABASE_URL` und `APP_PASSWORD` im Terminal setzen (siehe `.env.example`; das Beispiel wird nicht automatisch geladen).
+4. `npm start` ausführen, dann http://localhost:3000 öffnen.
+
+### Bereits vorhandene Buchungen aus der alten JSON-Version?
+
+Wenn du bisher die ältere Variante mit `data/finances.json` genutzt hast, werden diese Einträge **nicht automatisch importiert**. Das schützt vor versehentlichen Doppelbuchungen. Kontaktiere mich für eine einmalige Übernahme der vorhandenen Datei in Neon.

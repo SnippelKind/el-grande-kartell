@@ -1,8 +1,9 @@
 {
   "name": "el-grande-kartell-finances",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Passwortgeschütztes Finanzdashboard",
-  "scripts": {"start": "node server.js"},
+  "description": "Passwortgeschütztes Finanzdashboard mit kostenloser Neon PostgreSQL Datenbank",
+  "scripts": {"start": "node server.js", "check": "node --check server.js && node --check public/app.js"},
+  "dependencies": {"pg": "^8.16.3"},
   "engines": {"node": ">=20"}
 }
